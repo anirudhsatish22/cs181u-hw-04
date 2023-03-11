@@ -4,21 +4,21 @@ MODULE stack(action, push_val, pop_val)
     top : 0 .. 5;
     buffer : array 0 .. 5 - 1 of {x, y, z};
 
-  DEFINE 
+  DEFINE
     full := top = 5;
     empty := top = 0;
 
   ASSIGN
     init(top) := 0;
 
-    next(top) := 
+    next(top) :=
       case
         (action = push) & (top < 5)  : top + 1;
         (action = pop) & (top > 0) : top - 1;
         TRUE : top;
       esac;
 
-    next(pop_val) := 
+    next(pop_val) :=
       case
         action = pop & !empty : buffer[top - 1];
         TRUE : NULL;
@@ -49,42 +49,51 @@ LTLSPEC
   G(s.top >= 0 & s.top <= 5)
 
 -- ii. LTL property: The stack is never simultaneously full and empty.
-
+LTLSPEC
+  G(s.full -> !s.empty)
 
 -- iii. CTL property: In all possible states, it is always the case that if the stack happens to be empty, then it is possible that the stack eventually becomes full.
-
+CTLSPEC
+  AG(s.empty -> EF s.full)
 
 
 -- iv. LTL property: If the user only ever pushes then the stack eventually fills up.
-
+LTLSPEC
+  (G (action = push)) -> F s.full
 
 
 -- v. CTL property: At any time, if the user pops when the stack does not have any elements
 -- in it then the resulting pop value will be NULL.
-
-
+CTLSPEC
+  AG((action = pop & s.empty) -> AX(pop_val = NULL))
 
 -- vi. LTL property: At any time, if the user pops when the stack has at least one value in
 -- it, then the resulting pop value will not be NULL.
-
+LTLSPEC
+  G((action = pop & !s.empty) -> X(pop_val != NULL))
 
 
 -- vii. LTL property: It is always the case that if x is pushed on the stack and the stack is
 -- not full, then if in the next state the user decides to pop then in the state after that
 -- the popped value is x.
-
+LTLSPEC
+  G((action = push & !s.full & push_val = x) -> (X(action = pop) -> X(X(pop_val = x))))
 
 
 -- viii. CTL property: Starting from any point in time, it is possible that the stack will
 -- eventually hold three items.
-
+CTLSPEC
+  AG(EF s.top=3)
 
 
 -- ix. CTL property: If the stack pointer is 1 and then pop is executed twice in a row, then
 -- the stack will be empty.
-
+CTLSPEC
+  AG(s.top = 1 & action = pop & AX(action = pop) -> AX(AX(s.empty)))
 
 
 -- x. LTL property: If the user pushes an x followed directly by a y, and the stack is not full
 -- during either of those push actions, then if the user immediately pops, the resulting
 -- value will be y and if the user immediately pops again, the resulting value will be x.
+LTLSPEC
+  G(action = push & push_val = x & X(action = push) & X(push_val = y) & !s.full & X(!s.full) -> (X(X action = pop) -> (X(X(X pop_val = y)) & X(X(X action = pop)) -> X(X(X(X pop_val = x)))) ) )
